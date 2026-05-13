@@ -2,7 +2,43 @@
 
 Latch is a private launch surface for self-hosted web services. It is built with Astro, vanilla Web Components, Cloudflare Workers Static Assets, and Workers KV for runtime service configuration.
 
+## How to Deploy
+
+Important: clicking the Deploy to Cloudflare button is only the first step. Latch intentionally fails closed in production until Cloudflare Access is enabled and the Access values are configured on the Worker.
+
+### One-click Deploy
+
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/phyzess/latch)
+
+The deploy flow clones this public repository into your GitHub or GitLab account, builds the Worker, and provisions the `LATCH_CONFIG` Workers KV namespace from `wrangler.jsonc`.
+
+After the deploy finishes:
+
+1. Enable Cloudflare Access for the deployed Worker under Workers & Pages > your Worker > Settings > Domains & Routes.
+2. Use the one-click Access setup modal to copy `POLICY_AUD` and `TEAM_DOMAIN`. `TEAM_DOMAIN` may be either your Access team URL or the full `.../cdn-cgi/access/certs` URL.
+3. In Workers & Pages > your Worker > Settings > Variables and Secrets, set `POLICY_AUD` and `TEAM_DOMAIN` as secrets.
+4. Set `LATCH_ADMIN_EMAILS` to a comma-separated list of Cloudflare Access emails that may edit links, for example `you@example.com,ops@example.com`.
+5. Visit `/settings` on your deployed app, sign in through Access, and save your service YAML.
+
+Users who pass your Cloudflare Access policy can view the launcher. Only emails listed in `LATCH_ADMIN_EMAILS` can write config in `/settings`.
+
+### Local Wrangler Deploy
+
+If you prefer deploying from your machine:
+
+```sh
+wrangler login
+pnpm deploy
+```
+
+Then complete the same Access and `LATCH_ADMIN_EMAILS` setup above. If deploying from CI, use a Cloudflare API token with permission to deploy Workers and manage the required bindings.
+
+### Troubleshooting Access
+
+- `Cloudflare Access must be configured in production`: `POLICY_AUD` or `TEAM_DOMAIN` is missing. Enable one-click Access and set both values on the Worker.
+- `Invalid or expired Access token`: `POLICY_AUD` or `TEAM_DOMAIN` does not match the active Access application. Reopen the Access setup modal and update the Worker secrets.
+- `403` on `/settings`: your Access email is not listed in `LATCH_ADMIN_EMAILS`.
+- Empty launcher after first deploy: this is normal until an admin saves YAML in `/settings`; before initialization `/services.json` returns `[]`.
 
 ## Stack
 

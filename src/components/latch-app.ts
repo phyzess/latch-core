@@ -125,6 +125,43 @@ const appStyles = `
     margin: 0;
   }
 
+  .settings-link {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid var(--latch-line);
+    border-radius: 9px;
+    color: var(--latch-ink);
+    display: inline-flex;
+    font-size: 0.82rem;
+    font-weight: 650;
+    gap: 7px;
+    min-block-size: 32px;
+    padding-inline: 11px;
+    text-decoration: none;
+    transition:
+      background-color 160ms ease,
+      box-shadow 160ms ease,
+      transform 160ms ease;
+  }
+
+  .settings-link:hover,
+  .settings-link:focus-visible {
+    background: var(--latch-tint);
+    outline: 0;
+  }
+
+  .settings-link:focus-visible {
+    box-shadow: 0 0 0 4px var(--latch-focus-ring);
+  }
+
+  .settings-link:active {
+    transform: translateY(1px);
+  }
+
+  .settings-link latch-icon {
+    --icon-size: 0.86rem;
+  }
+
   .service-list {
     background: var(--latch-surface);
     border: 1px solid var(--latch-line);
@@ -574,6 +611,10 @@ export class LatchApp extends HTMLElement {
               ${countLabel ? `<p class="app-subtitle">${escapeHtml(countLabel)}</p>` : ""}
             </div>
           </div>
+          <a class="settings-link" href="/settings">
+            <latch-icon name="shield" aria-hidden="true"></latch-icon>
+            <span>Settings</span>
+          </a>
         </header>
         ${this.#renderBody()}
       </div>

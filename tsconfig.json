@@ -5,7 +5,7 @@
     "exactOptionalPropertyTypes": true,
     "moduleResolution": "bundler",
     "noUncheckedIndexedAccess": true,
-    "types": ["node", "vitest/globals"]
+    "types": ["node", "vitest/globals", "@cloudflare/workers-types"]
   },
   "include": [
     "src",

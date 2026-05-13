@@ -1,6 +1,8 @@
 # Configuration
 
-Latch reads a private YAML file at build time and emits `public/services.json`.
+Latch stores its service list in Cloudflare Workers KV and serves it at runtime from `/services.json`.
+
+Production config is edited from `/settings`. The editor stores both the raw YAML and the normalized service JSON in the `LATCH_CONFIG` KV namespace.
 
 ## Example
 
@@ -46,5 +48,7 @@ Rules:
 ## Build
 
 ```sh
-LATCH_SERVICES_FILE=/absolute/path/to/services.local.yaml pnpm build
+LATCH_SERVICES_FILE=/absolute/path/to/services.local.yaml pnpm validate:services:input
 ```
+
+The CLI validates local files with the same schema used by the Worker. It is not required for production deployment.

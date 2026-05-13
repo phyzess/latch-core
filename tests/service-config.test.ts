@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ConfigValidationError,
+  parseServiceConfigSource,
   serializeServices,
   validateServiceConfig
 } from "../scripts/service-config.ts";
@@ -129,6 +130,14 @@ describe("service config validation", () => {
         },
         { mode: "example" }
       )
+    ).toThrow(ConfigValidationError);
+  });
+
+  it("reports YAML parse errors", () => {
+    expect(() =>
+      parseServiceConfigSource("services: [", {
+        mode: "private"
+      })
     ).toThrow(ConfigValidationError);
   });
 });

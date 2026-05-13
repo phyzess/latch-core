@@ -2,8 +2,19 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "latch",
   "compatibility_date": "2026-05-13",
+  "main": "./src/worker.ts",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": true,
     "not_found_handling": "single-page-application"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "LATCH_CONFIG"
+    }
+  ],
+  "vars": {
+    "LATCH_ADMIN_EMAILS": ""
   }
 }

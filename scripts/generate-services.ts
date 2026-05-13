@@ -1,10 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { parse as parseYaml } from "yaml";
 import {
   ConfigValidationError,
+  parseServiceConfigSource,
   serializeServices,
-  validateServiceConfig,
   type ValidationMode
 } from "./service-config.ts";
 
@@ -21,10 +20,8 @@ try {
   const inputFile = resolveInputFile();
   const outputFile = resolve(process.cwd(), explicitOutput ?? "public/services.json");
   const rawSource = await readFile(inputFile, "utf8");
-  const parsed = parseYaml(rawSource);
-  const services = validateServiceConfig(parsed, {
+  const services = parseServiceConfigSource(rawSource, {
     mode,
-    rawSource,
     sourceLabel: inputFile
   });
 

@@ -10,7 +10,11 @@ Open a private advisory if the repository host supports it, or contact the maint
 
 ## Deployment Requirements
 
-Production deployments should protect the full Latch origin with Cloudflare Access or an equivalent identity-aware proxy. The protection must cover both `/` and `/services.json`.
+Production deployments must protect the full Latch origin with Cloudflare Access. The protection must cover `/`, `/services.json`, `/settings`, `/api/*`, and `/_astro/*`.
+
+Latch also validates the Cloudflare Access JWT in the Worker outside local development. Missing or invalid Access configuration fails closed.
+
+Only users whose Access email appears in `LATCH_ADMIN_EMAILS` can edit or roll back service config.
 
 ## Non-Goals
 

@@ -16,14 +16,34 @@
       "workerd"
     ]
   },
+  "cloudflare": {
+    "label": "Latch",
+    "products": [
+      "Workers",
+      "Workers KV"
+    ],
+    "bindings": {
+      "LATCH_ADMIN_EMAILS": {
+        "description": "Comma-separated email addresses allowed to edit Latch links after signing in through Cloudflare Access."
+      },
+      "POLICY_AUD": {
+        "description": "Cloudflare Access application audience tag from the one-click Access setup modal."
+      },
+      "TEAM_DOMAIN": {
+        "description": "Your Cloudflare Access team URL, for example `https://your-team.cloudflareaccess.com`."
+      }
+    }
+  },
   "scripts": {
     "dev": "pnpm generate:services:example && astro dev",
-    "build": "pnpm generate:services && astro build",
+    "dev:worker": "pnpm build && wrangler dev",
+    "build": "astro build && node scripts/remove-static-services.ts",
     "build:example": "pnpm generate:services:example && astro build",
     "preview": "astro preview",
     "generate:services": "node scripts/generate-services.ts",
     "generate:services:example": "node scripts/generate-services.ts --example",
     "validate:services": "node scripts/generate-services.ts --example --check",
+    "validate:services:input": "node scripts/generate-services.ts --check",
     "check": "astro check && pnpm lint",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -35,11 +55,13 @@
   },
   "dependencies": {
     "astro": "6.3.1",
+    "jose": "^6.2.3",
     "valibot": "1.4.0",
     "yaml": "2.9.0"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.9",
+    "@cloudflare/workers-types": "^4.20260511.1",
     "@eslint/js": "10.0.1",
     "@types/node": "25.7.0",
     "@vitest/browser": "4.1.6",

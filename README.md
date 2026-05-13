@@ -1,6 +1,8 @@
 # Latch
 
-Latch is a private launch surface for self-hosted web services. It is built as a static Astro app with vanilla Web Components, open Shadow DOM, and a private service list generated at build time.
+Latch is a private launch surface for self-hosted web services. It is built with Astro, vanilla Web Components, Cloudflare Workers Static Assets, and Workers KV for runtime service configuration.
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/phyzess/latch)
 
 ## Stack
 
@@ -8,7 +10,9 @@ Latch is a private launch surface for self-hosted web services. It is built as a
 - TypeScript `6.0.3`
 - Vanilla Custom Elements with open Shadow DOM
 - Valibot for service config validation
-- Cloudflare Workers Static Assets for deployment
+- Cloudflare Workers Static Assets
+- Cloudflare Workers KV for service configuration
+- Cloudflare Access JWT validation for production auth
 - mise for local toolchain management
 
 ## Quick Start
@@ -21,25 +25,43 @@ pnpm dev
 
 The development server uses `config/services.example.yaml`.
 
-## Private Config
-
-Real service lists must not be committed. Create a local ignored file:
+For Worker-backed local development:
 
 ```sh
-cp config/services.example.yaml config/services.local.yaml
+cp .dev.vars.example .dev.vars
+pnpm dev:worker
 ```
 
-Then build with:
+`localhost` skips Cloudflare Access and treats `dev@localhost` as an admin.
+
+## Runtime Config
+
+Production service lists live in the `LATCH_CONFIG` Workers KV namespace. Visit `/settings` after deployment to edit the YAML config.
+
+The YAML shape is:
+
+```yaml
+services:
+  - id: photos
+    name: Photos
+    url: https://photos.example.com
+    icon: image
+    shortcut: "1"
+```
+
+Real service lists must not be committed. For local validation of an ignored YAML file:
 
 ```sh
-LATCH_SERVICES_FILE=config/services.local.yaml pnpm build
+LATCH_SERVICES_FILE=config/services.local.yaml pnpm validate:services:input
 ```
 
-The build generates `public/services.json`, which is also ignored by git.
+`pnpm generate:services:example` remains available for static UI development only.
 
 ## Security Boundary
 
-Your service list is sensitive. Production deployments should place Cloudflare Access, or an equivalent identity-aware proxy, in front of the whole Latch domain. Unauthenticated users should not be able to fetch `/` or `/services.json`.
+Your service list is sensitive. Production deployments must place Cloudflare Access in front of the whole Latch domain. The Worker also validates the Cloudflare Access JWT in production and fails closed if `POLICY_AUD` or `TEAM_DOMAIN` are missing.
+
+Only emails listed in `LATCH_ADMIN_EMAILS` can edit links in `/settings`.
 
 Latch never stores service passwords, tokens, cookies, or credentials.
 
@@ -47,9 +69,11 @@ Latch never stores service passwords, tokens, cookies, or credentials.
 
 ```sh
 pnpm validate:services
+LATCH_SERVICES_FILE=config/services.local.yaml pnpm validate:services:input
 pnpm check
 pnpm test
-LATCH_SERVICES_FILE=config/services.local.yaml pnpm build
+pnpm build
+pnpm deploy:dry
 ```
 
 ## License

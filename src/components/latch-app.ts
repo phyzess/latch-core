@@ -45,24 +45,6 @@ const appStyles = `
     letter-spacing: inherit;
   }
 
-  .top-bar {
-    align-items: center;
-    background: rgba(255, 255, 255, 0.72);
-    border-block-end: 1px solid rgba(225, 228, 232, 0.78);
-    color: #666b73;
-    display: flex;
-    font-size: 0.82rem;
-    font-weight: 620;
-    gap: 8px;
-    justify-content: center;
-    min-block-size: 34px;
-    padding-inline: 16px;
-  }
-
-  .top-bar latch-icon {
-    --icon-size: 0.82rem;
-  }
-
   .app {
     display: block;
     inline-size: 100%;
@@ -447,10 +429,6 @@ const appStyles = `
   }
 
   @media (max-width: 640px) {
-    .top-bar {
-      min-block-size: 34px;
-    }
-
     .launcher-shell {
       gap: 18px;
       inline-size: calc(100vw - 24px);
@@ -591,17 +569,12 @@ export class LatchApp extends HTMLElement {
   }
 
   #renderContent(): string {
-    const hostLabel = getHostLabel(window.location.hostname, this.#services);
     const countLabel =
       this.#status === "ready"
         ? `${this.#services.length} ${this.#services.length === 1 ? "service" : "services"}`
         : "";
 
     return `
-      <div class="top-bar">
-        <latch-icon name="link" aria-hidden="true"></latch-icon>
-        <span>${escapeHtml(hostLabel)}</span>
-      </div>
       <div class="launcher-shell">
         <header class="app-header">
           <div class="brand-lockup">
@@ -842,33 +815,6 @@ function escapeAttribute(value: string): string {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
-}
-
-function getHostLabel(hostname: string, services: ServiceEntry[]): string {
-  if (isLocalHostname(hostname)) {
-    return getCommonDomainLabel(services) ?? "Latch";
-  }
-
-  return hostname || "Latch";
-}
-
-function isLocalHostname(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-}
-
-function getCommonDomainLabel(services: ServiceEntry[]): string | undefined {
-  const domains = new Set(services.map((service) => getBaseDomain(new URL(service.url).hostname)));
-
-  if (domains.size !== 1) {
-    return undefined;
-  }
-
-  return [...domains][0];
-}
-
-function getBaseDomain(hostname: string): string {
-  const parts = hostname.split(".").filter(Boolean);
-  return parts.length > 1 ? parts.slice(-2).join(".") : hostname;
 }
 
 function isServicePayload(payload: unknown): payload is ServiceEntry[] {

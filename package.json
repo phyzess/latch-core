@@ -12,9 +12,7 @@
     "README.md",
     "LICENSE"
   ],
-  "bin": {
-    "latch": "./package/cli.js"
-  },
+  "bin": "package/cli.js",
   "exports": {
     "./worker": {
       "types": "./package/types/worker.d.ts",

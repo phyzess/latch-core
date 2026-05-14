@@ -1,5 +1,6 @@
 import "./latch-icon";
 import { DEFAULT_SERVICE_CONFIG_YAML } from "../lib/default-service-config";
+import { bindServiceIconFallbacks } from "../lib/icon-fallbacks";
 import { applyShadowStyles } from "../lib/shadow-styles";
 import {
   ConfigValidationError,
@@ -240,6 +241,10 @@ const settingsStyles = `
     display: block;
     inline-size: 22px;
     object-fit: contain;
+  }
+
+  .service-icon-image[hidden] {
+    display: none;
   }
 
   .item-copy {
@@ -749,12 +754,7 @@ export class LatchSettings extends HTMLElement {
   }
 
   #bindIconFallbacks(): void {
-    for (const image of this.#root.querySelectorAll<HTMLImageElement>(".service-icon-image")) {
-      image.addEventListener("error", () => {
-        image.hidden = true;
-        image.nextElementSibling?.removeAttribute("hidden");
-      });
-    }
+    bindServiceIconFallbacks(this.#root);
   }
 
   #syncDraftPanels(): void {

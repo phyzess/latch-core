@@ -1,4 +1,5 @@
 import "./latch-icon";
+import { bindServiceIconFallbacks } from "../lib/icon-fallbacks";
 import { applyShadowStyles } from "../lib/shadow-styles";
 import type { LatchUserState, ServiceEntry } from "../lib/types";
 import { emptyUserState, loadUserState, recordServiceOpen, saveUserState } from "../lib/user-state";
@@ -224,6 +225,10 @@ const appStyles = `
     display: block;
     inline-size: 24px;
     object-fit: contain;
+  }
+
+  .service-icon-image[hidden] {
+    display: none;
   }
 
   .service-copy {
@@ -737,12 +742,7 @@ export class LatchApp extends HTMLElement {
   }
 
   #bindIconFallbacks(): void {
-    for (const image of this.#root.querySelectorAll<HTMLImageElement>(".service-icon-image")) {
-      image.addEventListener("error", () => {
-        image.hidden = true;
-        image.nextElementSibling?.removeAttribute("hidden");
-      });
-    }
+    bindServiceIconFallbacks(this.#root);
   }
 
   #onDocumentKeydown(event: KeyboardEvent): void {

@@ -1,13 +1,23 @@
 import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
-import { dirname, resolve } from "node:path";
+import { dirname, extname, resolve } from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+import { chromium } from "playwright";
 import { describe, expect, it } from "vitest";
 
 const execFileAsync = promisify(execFile);
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const mimeTypes = new Map([
+  [".html", "text/html"],
+  [".js", "text/javascript"],
+  [".json", "application/json"],
+  [".svg", "image/svg+xml"],
+  [".webmanifest", "application/manifest+json"]
+]);
 
 async function exec(command: string, args: string[], cwd: string): Promise<string> {
   try {
@@ -123,6 +133,7 @@ describe("npm package", () => {
       const indexHtml = await readFile(resolve(fixture, "dist/index.html"), "utf8");
       expect(indexHtml).toContain("<latch-app");
       await expect(readFile(resolve(fixture, "dist/services.json"), "utf8")).rejects.toThrow();
+      await expectBrokenIconFallbackToHideFailedImage(resolve(fixture, "dist"));
       const dryRunOutput = await exec("pnpm", ["exec", "wrangler", "deploy", "--dry-run"], fixture);
       expect(dryRunOutput).toContain("env.LATCH_CONFIG");
     } finally {
@@ -131,3 +142,91 @@ describe("npm package", () => {
     }
   }, 120_000);
 });
+
+async function expectBrokenIconFallbackToHideFailedImage(distRoot: string): Promise<void> {
+  const services = [
+    {
+      id: "mailbox",
+      name: "Mailbox",
+      url: "https://mailbox.phyzess.me",
+      iconUrl: "https://bad.test/icon.png",
+      shortcut: "1"
+    }
+  ];
+  const server = createServer(async (request, response) => {
+    const url = new URL(request.url ?? "/", "http://localhost");
+    if (url.pathname === "/services.json") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify(services));
+      return;
+    }
+
+    const pathname = url.pathname === "/" ? "/index.html" : url.pathname;
+    try {
+      const file = await readFile(resolve(distRoot, `.${pathname}`));
+      response.writeHead(200, {
+        "content-type": mimeTypes.get(extname(pathname)) ?? "application/octet-stream"
+      });
+      response.end(file);
+    } catch {
+      response.writeHead(404);
+      response.end("not found");
+    }
+  });
+
+  try {
+    await new Promise<void>((resolveListen) => {
+      server.listen(0, "127.0.0.1", resolveListen);
+    });
+    const { port } = server.address() as AddressInfo;
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage();
+      await page.route("https://bad.test/**", (route) => route.abort());
+      await page.goto(`http://127.0.0.1:${port}`);
+      await page.waitForFunction(() => {
+        const root = document.querySelector("latch-app")?.shadowRoot;
+        const image = root?.querySelector<HTMLImageElement>(".service-icon-image");
+        return image?.hidden === true;
+      });
+
+      const iconState = await page.evaluate(() => {
+        const root = document.querySelector("latch-app")?.shadowRoot;
+        const image = root?.querySelector<HTMLImageElement>(".service-icon-image");
+        if (!image) {
+          throw new Error("Expected a service icon image.");
+        }
+        const fallback = image.nextElementSibling as HTMLElement | null;
+        if (!fallback) {
+          throw new Error("Expected a fallback service icon.");
+        }
+        const imageBox = image.getBoundingClientRect();
+        return {
+          fallbackHidden: fallback.hidden,
+          imageDisplay: getComputedStyle(image).display,
+          imageHeight: imageBox.height,
+          imageWidth: imageBox.width
+        };
+      });
+
+      expect(iconState).toEqual({
+        fallbackHidden: false,
+        imageDisplay: "none",
+        imageHeight: 0,
+        imageWidth: 0
+      });
+    } finally {
+      await browser.close();
+    }
+  } finally {
+    await new Promise<void>((resolveClose, rejectClose) => {
+      server.close((error) => {
+        if (error) {
+          rejectClose(error);
+          return;
+        }
+        resolveClose();
+      });
+    });
+  }
+}

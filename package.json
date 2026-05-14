@@ -37,7 +37,7 @@
   "scripts": {
     "dev": "pnpm generate:services:example && astro dev",
     "dev:worker": "pnpm build && wrangler dev",
-    "build": "astro build && node scripts/remove-static-services.ts",
+    "build": "astro build && node scripts/remove-static-services.js",
     "build:example": "pnpm generate:services:example && astro build",
     "preview": "astro preview",
     "generate:services": "node scripts/generate-services.ts",

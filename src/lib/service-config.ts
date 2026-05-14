@@ -11,7 +11,7 @@ const nonEmptyString = v.pipe(v.string(), v.trim(), v.minLength(1));
 
 export const serviceEntrySchema = v.strictObject({
   id: v.pipe(nonEmptyString, v.regex(kebabCasePattern, "Use lowercase kebab-case.")),
-  name: nonEmptyString,
+  name: v.optional(nonEmptyString),
   url: v.pipe(v.string(), v.url(), v.startsWith("https://", "Service URLs must use HTTPS.")),
   icon: v.optional(v.pipe(v.string(), v.regex(/^[a-z0-9-]+$/i, "Use a simple icon name."))),
   aliases: v.optional(v.array(nonEmptyString)),
@@ -27,7 +27,12 @@ const configSchema = v.strictObject({
   services: v.pipe(v.array(serviceEntrySchema), v.minLength(1))
 });
 
-export type ServiceEntry = v.InferOutput<typeof serviceEntrySchema>;
+export type ServiceConfigEntry = v.InferOutput<typeof serviceEntrySchema>;
+
+export type ServiceEntry = Omit<ServiceConfigEntry, "name"> & {
+  name: string;
+  iconUrl?: string;
+};
 
 export type ValidationMode = "private" | "example";
 
@@ -47,7 +52,7 @@ export function parseServiceConfigSource(
     mode: ValidationMode;
     sourceLabel?: string;
   }
-): ServiceEntry[] {
+): ServiceConfigEntry[] {
   let parsed: unknown;
 
   try {
@@ -81,7 +86,7 @@ export function validateServiceConfig(
     rawSource?: string;
     sourceLabel?: string;
   }
-): ServiceEntry[] {
+): ServiceConfigEntry[] {
   assertNoObviousSecrets(options.rawSource ?? "");
 
   const result = v.safeParse(configSchema, input);
@@ -104,7 +109,7 @@ export function validateServiceConfig(
   return services;
 }
 
-export function serializeServices(services: ServiceEntry[]): string {
+export function serializeServices(services: ServiceConfigEntry[]): string {
   return `${JSON.stringify(services, null, 2)}\n`;
 }
 
@@ -118,22 +123,23 @@ function assertNoObviousSecrets(rawSource: string): void {
   }
 }
 
-function assertUniqueIds(services: ServiceEntry[]): void {
+function assertUniqueIds(services: ServiceConfigEntry[]): void {
   const seen = new Map<string, string>();
 
   for (const service of services) {
+    const label = getServiceLabel(service);
     const previous = seen.get(service.id);
     if (previous) {
       throw new ConfigValidationError(`Duplicate service id "${service.id}".`, [
-        `${previous} and ${service.name} share the same id.`
+        `${previous} and ${label} share the same id.`
       ]);
     }
 
-    seen.set(service.id, service.name);
+    seen.set(service.id, label);
   }
 }
 
-function assertUniqueShortcuts(services: ServiceEntry[]): void {
+function assertUniqueShortcuts(services: ServiceConfigEntry[]): void {
   const seen = new Map<string, string>();
 
   for (const service of services) {
@@ -142,18 +148,19 @@ function assertUniqueShortcuts(services: ServiceEntry[]): void {
     }
 
     const shortcut = service.shortcut.toLowerCase();
+    const label = getServiceLabel(service);
     const previous = seen.get(shortcut);
     if (previous) {
       throw new ConfigValidationError(`Shortcut "${service.shortcut}" is used more than once.`, [
-        `${previous} and ${service.name} share the same shortcut.`
+        `${previous} and ${label} share the same shortcut.`
       ]);
     }
 
-    seen.set(shortcut, service.name);
+    seen.set(shortcut, label);
   }
 }
 
-function assertSafeUrls(services: ServiceEntry[]): void {
+function assertSafeUrls(services: ServiceConfigEntry[]): void {
   for (const service of services) {
     const url = new URL(service.url);
     const hostname = normalizeHostname(url.hostname);
@@ -166,7 +173,7 @@ function assertSafeUrls(services: ServiceEntry[]): void {
   }
 }
 
-function assertExampleDomains(services: ServiceEntry[]): void {
+function assertExampleDomains(services: ServiceConfigEntry[]): void {
   for (const service of services) {
     const hostname = normalizeHostname(new URL(service.url).hostname);
     if (hostname !== "example.com" && !hostname.endsWith(".example.com")) {
@@ -176,6 +183,10 @@ function assertExampleDomains(services: ServiceEntry[]): void {
       );
     }
   }
+}
+
+function getServiceLabel(service: ServiceConfigEntry): string {
+  return service.name ?? service.id;
 }
 
 function isPrivateHostname(hostname: string): boolean {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getAccessUrls,
   handleRequest,
@@ -21,6 +21,22 @@ const otherRaw = `services:
     shortcut: "2"
 `;
 
+const autoRaw = `services:
+  - id: photos
+    url: https://photos.example.com
+`;
+
+const manualIconRaw = `services:
+  - id: notes
+    url: https://notes.example.com
+    icon: notebook
+`;
+
+const missingMetadataRaw = `services:
+  - id: offline
+    url: https://offline.example.com
+`;
+
 const adminSession: AuthSession = {
   email: "admin@example.com",
   isAdmin: true,
@@ -32,6 +48,14 @@ const userSession: AuthSession = {
   isAdmin: false,
   isLocal: false
 };
+
+beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn(fetchMetadataFixture));
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("worker auth helpers", () => {
   it("parses admin email allowlists case-insensitively", () => {
@@ -91,12 +115,57 @@ describe("worker config API", () => {
 
     expect(services).toEqual([
       {
+        iconUrl: "https://photos.example.com/assets/favicon.png",
         id: "photos",
         name: "Photos",
         shortcut: "1",
         url: "https://photos.example.com"
       }
     ]);
+  });
+
+  it("resolves missing service names and icons from linked page metadata", async () => {
+    const env = makeEnv();
+    const saveResponse = await saveConfig(env, autoRaw);
+    const payload = (await saveResponse.json()) as {
+      services: Array<{ iconUrl?: string; id: string; name: string }>;
+    };
+
+    expect(saveResponse.status).toBe(200);
+    expect(payload.services[0]).toMatchObject({
+      iconUrl: "https://photos.example.com/assets/favicon.png",
+      id: "photos",
+      name: "Photo Shelf & Albums"
+    });
+  });
+
+  it("keeps manual icon overrides when metadata also has a favicon", async () => {
+    const env = makeEnv();
+    const saveResponse = await saveConfig(env, manualIconRaw);
+    const payload = (await saveResponse.json()) as {
+      services: Array<{ icon?: string; iconUrl?: string; name: string }>;
+    };
+
+    expect(saveResponse.status).toBe(200);
+    expect(payload.services[0]).toMatchObject({
+      icon: "notebook",
+      name: "Notes Portal"
+    });
+    expect(payload.services[0]?.iconUrl).toBeUndefined();
+  });
+
+  it("falls back to the hostname when metadata cannot be fetched", async () => {
+    const env = makeEnv();
+    const saveResponse = await saveConfig(env, missingMetadataRaw);
+    const payload = (await saveResponse.json()) as {
+      services: Array<{ iconUrl?: string; name: string }>;
+    };
+
+    expect(saveResponse.status).toBe(200);
+    expect(payload.services[0]).toMatchObject({
+      name: "offline.example.com"
+    });
+    expect(payload.services[0]?.iconUrl).toBeUndefined();
   });
 
   it("does not overwrite existing config when YAML is invalid", async () => {
@@ -190,4 +259,40 @@ class MemoryKV {
   async delete(key: string): Promise<void> {
     this.#store.delete(key);
   }
+}
+
+async function fetchMetadataFixture(input: RequestInfo | URL): Promise<Response> {
+  const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
+
+  if (url.hostname === "photos.example.com") {
+    return new Response(
+      `<!doctype html>
+        <title>Photo Shelf &amp; Albums</title>
+        <link rel="icon" href="/assets/favicon.png">
+      `,
+      {
+        headers: {
+          "content-type": "text/html; charset=utf-8"
+        }
+      }
+    );
+  }
+
+  if (url.hostname === "notes.example.com") {
+    return new Response(
+      `<!doctype html>
+        <meta property="og:title" content="Notes Portal">
+        <link rel="apple-touch-icon" href="https://cdn.example.com/notes-touch.png">
+      `,
+      {
+        headers: {
+          "content-type": "text/html; charset=utf-8"
+        }
+      }
+    );
+  }
+
+  return new Response("not found", {
+    status: 404
+  });
 }

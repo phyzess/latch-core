@@ -4,8 +4,13 @@ import { applyShadowStyles } from "../lib/shadow-styles";
 import {
   ConfigValidationError,
   parseServiceConfigSource,
+  type ServiceConfigEntry,
   type ServiceEntry
 } from "../lib/service-config";
+
+type PreviewServiceEntry = ServiceConfigEntry & {
+  iconUrl?: string;
+};
 
 type SessionResponse = {
   configured: boolean;
@@ -225,6 +230,18 @@ const settingsStyles = `
     --icon-size: 0.92rem;
   }
 
+  .icon-box latch-icon[hidden] {
+    display: none;
+  }
+
+  .service-icon-image {
+    block-size: 22px;
+    border-radius: 5px;
+    display: block;
+    inline-size: 22px;
+    object-fit: contain;
+  }
+
   .item-copy {
     display: grid;
     gap: 2px;
@@ -382,7 +399,7 @@ export class LatchSettings extends HTMLElement {
   #session: SessionResponse | undefined;
   #configured = false;
   #raw = DEFAULT_SERVICE_CONFIG_YAML;
-  #draftServices: ServiceEntry[] = [];
+  #draftServices: PreviewServiceEntry[] = [];
   #revisions: RevisionSummary[] = [];
   #validationMessage = "";
   #validationDetails: string[] = [];
@@ -407,12 +424,14 @@ export class LatchSettings extends HTMLElement {
     this.#errorMessage = "";
     this.#notice = "";
     this.#render();
+    let updateDraftServices = true;
 
     try {
       this.#session = await fetchJson<SessionResponse>("/api/session");
       if (this.#session.isAdmin) {
         const config = await fetchJson<ConfigResponse>("/api/config");
         this.#applyConfig(config);
+        updateDraftServices = !config.configured;
       }
       this.#status = "ready";
     } catch (error) {
@@ -420,7 +439,7 @@ export class LatchSettings extends HTMLElement {
       this.#errorMessage = error instanceof Error ? error.message : "Could not load settings.";
     }
 
-    this.#validateDraft();
+    this.#validateDraft(updateDraftServices);
     this.#render();
   }
 
@@ -492,15 +511,20 @@ export class LatchSettings extends HTMLElement {
     this.#validationDetails = [];
   }
 
-  #validateDraft(): void {
+  #validateDraft(updateDraftServices = true): void {
     try {
-      this.#draftServices = parseServiceConfigSource(this.#raw, {
+      const draftServices = parseServiceConfigSource(this.#raw, {
         mode: "private"
       });
+      if (updateDraftServices) {
+        this.#draftServices = draftServices;
+      }
       this.#validationMessage = "";
       this.#validationDetails = [];
     } catch (error) {
-      this.#draftServices = [];
+      if (updateDraftServices) {
+        this.#draftServices = [];
+      }
       if (error instanceof ConfigValidationError) {
         this.#validationMessage = error.message;
         this.#validationDetails = error.details;
@@ -645,15 +669,16 @@ export class LatchSettings extends HTMLElement {
     `;
   }
 
-  #renderService(service: ServiceEntry): string {
+  #renderService(service: PreviewServiceEntry): string {
     const host = new URL(service.url).hostname;
+    const name = getServiceDisplayName(service);
     return `
       <div class="preview-item">
         <span class="icon-box" aria-hidden="true">
-          <latch-icon name="${escapeAttribute(service.icon ?? "service")}"></latch-icon>
+          ${renderServiceIcon(service)}
         </span>
         <span class="item-copy">
-          <span class="item-name">${escapeHtml(service.name)}</span>
+          <span class="item-name">${escapeHtml(name)}</span>
           <span class="item-meta">${escapeHtml(host)}</span>
         </span>
       </div>
@@ -719,6 +744,17 @@ export class LatchSettings extends HTMLElement {
       ?.addEventListener("click", () => {
         void this.#rollback();
       });
+
+    this.#bindIconFallbacks();
+  }
+
+  #bindIconFallbacks(): void {
+    for (const image of this.#root.querySelectorAll<HTMLImageElement>(".service-icon-image")) {
+      image.addEventListener("error", () => {
+        image.hidden = true;
+        image.nextElementSibling?.removeAttribute("hidden");
+      });
+    }
   }
 
   #syncDraftPanels(): void {
@@ -730,6 +766,7 @@ export class LatchSettings extends HTMLElement {
     const preview = this.#root.querySelector(".preview-slot");
     if (preview) {
       preview.innerHTML = this.#renderPreview();
+      this.#bindIconFallbacks();
     }
 
     const save = this.#root.querySelector<HTMLButtonElement>("[data-action='save']");
@@ -774,6 +811,22 @@ function getErrorMessage(payload: unknown, status: number): string {
 
 function formatRevision(revision: RevisionSummary): string {
   return `${new Date(revision.savedAt).toLocaleString()} · ${revision.serviceCount} services`;
+}
+
+function getServiceDisplayName(service: PreviewServiceEntry): string {
+  return service.name ?? new URL(service.url).hostname;
+}
+
+function renderServiceIcon(service: PreviewServiceEntry): string {
+  const fallbackIcon = escapeAttribute(service.icon ?? "service");
+  if (service.icon || !service.iconUrl) {
+    return `<latch-icon name="${fallbackIcon}"></latch-icon>`;
+  }
+
+  return `
+    <img class="service-icon-image" src="${escapeAttribute(service.iconUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" />
+    <latch-icon name="${fallbackIcon}" hidden></latch-icon>
+  `;
 }
 
 function escapeHtml(value: string): string {

@@ -29,6 +29,18 @@ latch doctor
 
 `latch build` copies the packaged static assets into a deployment repo and deliberately removes any static `services.json`; production links are loaded from Workers KV at runtime.
 
+When production config is saved, the Worker resolves missing service names from linked page titles and missing icons from linked page favicons. Manually configured `name` and `icon` values take priority.
+
+## Development
+
+```sh
+pnpm dev
+```
+
+`pnpm dev` builds the static UI and starts Wrangler with the same Worker, assets, API routes, `/settings`, `/services.json`, and local KV flow used by a deployed site. Localhost skips Cloudflare Access and treats `dev@localhost` as an admin.
+
+Use `pnpm dev:ui` only for isolated Astro UI work that does not need Worker APIs.
+
 ## Release
 
 ```sh

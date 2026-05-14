@@ -3,6 +3,10 @@ import { applyShadowStyles } from "../lib/shadow-styles";
 import type { LatchUserState, ServiceEntry } from "../lib/types";
 import { emptyUserState, loadUserState, recordServiceOpen, saveUserState } from "../lib/user-state";
 
+type AppServiceEntry = Omit<ServiceEntry, "name"> & {
+  name?: string;
+};
+
 const appStyles = `
   :host {
     --latch-page: #f6f7f8;
@@ -208,6 +212,18 @@ const appStyles = `
 
   .icon-box latch-icon {
     --icon-size: 1rem;
+  }
+
+  .icon-box latch-icon[hidden] {
+    display: none;
+  }
+
+  .service-icon-image {
+    block-size: 24px;
+    border-radius: 6px;
+    display: block;
+    inline-size: 24px;
+    object-fit: contain;
   }
 
   .service-copy {
@@ -497,7 +513,7 @@ const appStyles = `
 
 export class LatchApp extends HTMLElement {
   #root: ShadowRoot;
-  #services: ServiceEntry[] = [];
+  #services: AppServiceEntry[] = [];
   #state: LatchUserState = emptyUserState();
   #status: "loading" | "ready" | "error" = "loading";
   #errorMessage = "";
@@ -657,9 +673,10 @@ export class LatchApp extends HTMLElement {
     `;
   }
 
-  #renderService(service: ServiceEntry, index: number): string {
+  #renderService(service: AppServiceEntry, index: number): string {
     const selected = index === this.#selectedIndex;
     const host = new URL(service.url).hostname;
+    const name = getServiceDisplayName(service);
     const shortcut = service.shortcut
       ? `<span class="shortcut-badge" aria-hidden="true">${escapeHtml(service.shortcut)}</span>`
       : "";
@@ -673,13 +690,13 @@ export class LatchApp extends HTMLElement {
         data-service-id="${escapeAttribute(service.id)}"
         data-service-index="${index}"
         data-active="${selected ? "true" : "false"}"
-        aria-label="Open ${escapeAttribute(service.name)} (${escapeAttribute(host)})"
+        aria-label="Open ${escapeAttribute(name)} (${escapeAttribute(host)})"
       >
         <span class="icon-box" aria-hidden="true">
-          <latch-icon name="${escapeAttribute(service.icon ?? "service")}"></latch-icon>
+          ${renderServiceIcon(service)}
         </span>
         <span class="service-copy">
-          <span class="service-name" part="label">${escapeHtml(service.name)}</span>
+          <span class="service-name" part="label">${escapeHtml(name)}</span>
           <span class="service-host">${escapeHtml(host)}</span>
         </span>
         <span class="service-accessory" aria-hidden="true">
@@ -715,6 +732,17 @@ export class LatchApp extends HTMLElement {
       ?.addEventListener("click", () => {
         void this.#loadServices();
       });
+
+    this.#bindIconFallbacks();
+  }
+
+  #bindIconFallbacks(): void {
+    for (const image of this.#root.querySelectorAll<HTMLImageElement>(".service-icon-image")) {
+      image.addEventListener("error", () => {
+        image.hidden = true;
+        image.nextElementSibling?.removeAttribute("hidden");
+      });
+    }
   }
 
   #onDocumentKeydown(event: KeyboardEvent): void {
@@ -771,13 +799,13 @@ export class LatchApp extends HTMLElement {
     }
   }
 
-  #openService(service: ServiceEntry): void {
+  #openService(service: AppServiceEntry): void {
     this.#state = recordServiceOpen(this.#state, service.id);
     saveUserState(this.#state);
     window.open(service.url, "_blank", "noopener,noreferrer");
   }
 
-  #findService(serviceId: string | undefined): ServiceEntry | undefined {
+  #findService(serviceId: string | undefined): AppServiceEntry | undefined {
     if (!serviceId) {
       return undefined;
     }
@@ -817,17 +845,36 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-function isServicePayload(payload: unknown): payload is ServiceEntry[] {
+function getServiceDisplayName(service: AppServiceEntry): string {
+  return service.name ?? new URL(service.url).hostname;
+}
+
+function renderServiceIcon(service: AppServiceEntry): string {
+  const fallbackIcon = escapeAttribute(service.icon ?? "service");
+  if (service.icon || !service.iconUrl) {
+    return `<latch-icon name="${fallbackIcon}"></latch-icon>`;
+  }
+
+  return `
+    <img class="service-icon-image" src="${escapeAttribute(service.iconUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" />
+    <latch-icon name="${fallbackIcon}" hidden></latch-icon>
+  `;
+}
+
+function isServicePayload(payload: unknown): payload is AppServiceEntry[] {
   return (
     Array.isArray(payload) &&
     payload.every(
       (service) =>
         service &&
         typeof service === "object" &&
-        typeof (service as Partial<ServiceEntry>).id === "string" &&
-        typeof (service as Partial<ServiceEntry>).name === "string" &&
-        typeof (service as Partial<ServiceEntry>).url === "string" &&
-        (service as Partial<ServiceEntry>).url?.startsWith("https://")
+        typeof (service as Partial<AppServiceEntry>).id === "string" &&
+        (typeof (service as Partial<AppServiceEntry>).name === "undefined" ||
+          typeof (service as Partial<AppServiceEntry>).name === "string") &&
+        typeof (service as Partial<AppServiceEntry>).url === "string" &&
+        (service as Partial<AppServiceEntry>).url?.startsWith("https://") &&
+        (typeof (service as Partial<AppServiceEntry>).iconUrl !== "string" ||
+          (service as Partial<AppServiceEntry>).iconUrl?.startsWith("https://"))
     )
   );
 }

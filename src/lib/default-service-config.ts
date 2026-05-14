@@ -1,8 +1,6 @@
 export const DEFAULT_SERVICE_CONFIG_YAML = `services:
   - id: photos
-    name: Photos
     url: https://photos.example.com
-    icon: image
     aliases:
       - pictures
       - albums

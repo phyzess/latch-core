@@ -5,6 +5,7 @@ import {
   parseServiceConfigSource,
   type ServiceEntry
 } from "./lib/service-config";
+import { resolveServiceEntries } from "./lib/service-metadata";
 
 const SERVICES_CURRENT_KEY = "services.current";
 const SERVICES_RAW_KEY = "services.raw";
@@ -290,18 +291,19 @@ async function persistConfig(
   const services = parseServiceConfigSource(raw, {
     mode: "private"
   });
+  const resolvedServices = await resolveServiceEntries(services);
   const savedAt = new Date().toISOString();
   const id = `${Date.now()}-${crypto.randomUUID()}`;
   const summary: ServiceRevisionSummary = {
     id,
     savedAt,
     savedBy,
-    serviceCount: services.length
+    serviceCount: resolvedServices.length
   };
   const snapshot: ServiceRevisionSnapshot = {
     ...summary,
     raw,
-    services
+    services: resolvedServices
   };
 
   const previousRevisions = await getRevisionSummaries(env);
@@ -309,7 +311,7 @@ async function persistConfig(
   const prunedRevisions = previousRevisions.slice(MAX_REVISIONS - 1);
 
   await env.LATCH_CONFIG.put(`${SERVICE_REVISION_PREFIX}${id}`, JSON.stringify(snapshot));
-  await env.LATCH_CONFIG.put(SERVICES_CURRENT_KEY, JSON.stringify(services));
+  await env.LATCH_CONFIG.put(SERVICES_CURRENT_KEY, JSON.stringify(resolvedServices));
   await env.LATCH_CONFIG.put(SERVICES_RAW_KEY, raw);
   await env.LATCH_CONFIG.put(SERVICES_REVISIONS_KEY, JSON.stringify(nextRevisions));
   await Promise.all(
@@ -320,7 +322,7 @@ async function persistConfig(
 
   return {
     revisions: nextRevisions,
-    services
+    services: resolvedServices
   };
 }
 

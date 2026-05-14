@@ -9,9 +9,7 @@ Production config is edited from `/settings`. The editor stores both the raw YAM
 ```yaml
 services:
   - id: photos
-    name: Photos
     url: https://photos.example.com
-    icon: image
     aliases:
       - pictures
     group: Media
@@ -26,7 +24,7 @@ services:
 ```ts
 type ServiceEntry = {
   id: string;
-  name: string;
+  name?: string;
   url: `https://${string}`;
   icon?: string;
   aliases?: string[];
@@ -36,6 +34,8 @@ type ServiceEntry = {
   tags?: string[];
 };
 ```
+
+`name` and `icon` are optional overrides. When config is saved through the Worker, Latch resolves missing names from the linked page title, falls back to the hostname, and stores a discovered favicon URL when no built-in `icon` is configured.
 
 Rules:
 

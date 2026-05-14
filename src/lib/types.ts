@@ -1,4 +1,4 @@
-export type { ServiceEntry } from "./service-config";
+export type { ServiceConfigEntry, ServiceEntry } from "./service-config";
 
 export type LatchUserState = {
   favorites: string[];

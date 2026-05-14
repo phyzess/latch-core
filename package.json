@@ -36,8 +36,9 @@
     ]
   },
   "scripts": {
-    "dev": "pnpm generate:services:example && astro dev",
-    "dev:worker": "pnpm build && wrangler dev",
+    "dev": "pnpm build && wrangler dev",
+    "dev:ui": "pnpm generate:services:example && astro dev",
+    "dev:worker": "pnpm dev",
     "build": "astro build && node scripts/remove-static-services.ts",
     "build:package": "pnpm build && node scripts/build-package.mjs && tsc -p tsconfig.package.json",
     "build:example": "pnpm generate:services:example && astro build",

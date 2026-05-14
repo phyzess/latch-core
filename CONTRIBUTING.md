@@ -10,6 +10,8 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
+`pnpm dev` runs the full local Worker site through Wrangler. Use `pnpm dev:ui` only when you specifically want the static Astro UI without Worker APIs.
+
 ## Checks
 
 Run these before opening a pull request:

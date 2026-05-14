@@ -36,6 +36,25 @@ describe("service config validation", () => {
     expect(serializeServices(services)).toContain('"id": "photos"');
   });
 
+  it("accepts services without manual names", () => {
+    const services = validateServiceConfig(
+      {
+        services: [
+          {
+            id: "photos",
+            url: "https://photos.example.com"
+          }
+        ]
+      },
+      { mode: "example" }
+    );
+
+    expect(services[0]).toEqual({
+      id: "photos",
+      url: "https://photos.example.com"
+    });
+  });
+
   it("rejects duplicate ids", () => {
     expect(() =>
       validateServiceConfig(

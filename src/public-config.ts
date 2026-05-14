@@ -6,7 +6,7 @@ import {
 
 export interface ServiceEntry {
   id: string;
-  name: string;
+  name?: string | undefined;
   url: string;
   icon?: string | undefined;
   aliases?: string[] | undefined;

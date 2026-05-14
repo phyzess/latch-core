@@ -12,6 +12,8 @@ Important: clicking the Deploy to Cloudflare button is only the first step. Latc
 
 The deploy flow clones this public repository into your GitHub or GitLab account, builds the Worker, and provisions the `LATCH_CONFIG` Workers KV namespace from `wrangler.jsonc`.
 
+Cloudflare Workers Builds reads `.node-version` for the build runtime. The repository pins Node `26.1.0` there because Cloudflare does not read `mise.toml`, and `package.json` `engines` alone does not select the build image Node version.
+
 After the deploy finishes:
 
 1. Enable Cloudflare Access for the deployed Worker under Workers & Pages > your Worker > Settings > Domains & Routes.

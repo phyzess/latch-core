@@ -1,5 +1,7 @@
 node_modules/
 dist/
+package/
+*.tgz
 .astro/
 .wrangler/
 .dev.vars

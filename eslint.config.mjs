@@ -4,7 +4,14 @@ import tseslint from "typescript-eslint";
 
 export default [
   {
-    ignores: ["dist/**", ".astro/**", ".wrangler/**", "coverage/**", "public/services.json"]
+    ignores: [
+      "dist/**",
+      "package/**",
+      ".astro/**",
+      ".wrangler/**",
+      "coverage/**",
+      "public/services.json"
+    ]
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -23,6 +30,15 @@ export default [
         caches: "readonly",
         fetch: "readonly",
         self: "readonly"
+      }
+    }
+  },
+  {
+    files: ["scripts/**/*.mjs", "src/cli.ts"],
+    languageOptions: {
+      globals: {
+        console: "readonly",
+        process: "readonly"
       }
     }
   }

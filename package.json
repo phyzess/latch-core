@@ -1,10 +1,31 @@
 {
-  "name": "latch",
+  "name": "@phyzess/latch",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "license": "MIT",
   "packageManager": "pnpm@11.1.1",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "package/**",
+    "README.md",
+    "LICENSE"
+  ],
+  "bin": {
+    "latch": "./package/cli.js"
+  },
+  "exports": {
+    "./worker": {
+      "types": "./package/types/worker.d.ts",
+      "default": "./package/worker.js"
+    },
+    "./config": {
+      "types": "./package/types/public-config.d.ts",
+      "default": "./package/config.js"
+    },
+    "./package.json": "./package.json"
+  },
   "engines": {
     "node": ">=26.1.0 <27",
     "pnpm": ">=11.1.1 <12"
@@ -16,28 +37,11 @@
       "workerd"
     ]
   },
-  "cloudflare": {
-    "label": "Latch",
-    "products": [
-      "Workers",
-      "Workers KV"
-    ],
-    "bindings": {
-      "LATCH_ADMIN_EMAILS": {
-        "description": "Comma-separated email addresses allowed to edit Latch links after signing in through Cloudflare Access."
-      },
-      "POLICY_AUD": {
-        "description": "Cloudflare Access application audience tag from the one-click Access setup modal."
-      },
-      "TEAM_DOMAIN": {
-        "description": "Your Cloudflare Access team URL, for example `https://your-team.cloudflareaccess.com`."
-      }
-    }
-  },
   "scripts": {
     "dev": "pnpm generate:services:example && astro dev",
     "dev:worker": "pnpm build && wrangler dev",
     "build": "astro build && node scripts/remove-static-services.ts",
+    "build:package": "pnpm build && node scripts/build-package.mjs && tsc -p tsconfig.package.json",
     "build:example": "pnpm generate:services:example && astro build",
     "preview": "astro preview",
     "generate:services": "node scripts/generate-services.ts",
@@ -50,14 +54,10 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "prepack": "pnpm build:package",
+    "pack:check": "pnpm build:package && npm pack --dry-run",
     "deploy": "pnpm build && wrangler deploy",
     "deploy:dry": "pnpm build && wrangler deploy --dry-run"
-  },
-  "dependencies": {
-    "astro": "6.3.1",
-    "jose": "^6.2.3",
-    "valibot": "1.4.0",
-    "yaml": "2.9.0"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.9",
@@ -66,6 +66,8 @@
     "@types/node": "25.7.0",
     "@vitest/browser": "4.1.6",
     "@vitest/coverage-v8": "4.1.6",
+    "esbuild": "0.27.7",
+    "astro": "6.3.1",
     "eslint": "10.3.0",
     "eslint-plugin-astro": "1.7.0",
     "playwright": "1.60.0",
@@ -74,6 +76,9 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.59.3",
     "vitest": "4.1.6",
-    "wrangler": "4.90.1"
+    "wrangler": "4.90.1",
+    "jose": "^6.2.3",
+    "valibot": "1.4.0",
+    "yaml": "2.9.0"
   }
 }

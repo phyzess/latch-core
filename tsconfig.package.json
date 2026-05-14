@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "outDir": "package/types",
+    "rootDir": "src"
+  },
+  "include": [
+    "src/worker.ts",
+    "src/public-config.ts",
+    "src/lib/service-config.ts",
+    "src/lib/default-service-config.ts"
+  ]
+}

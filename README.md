@@ -43,6 +43,8 @@ Use `pnpm dev:ui` only for isolated Astro UI work that does not need Worker APIs
 
 ## Release
 
+Use [docs/release.md](docs/release.md) as the release checklist. Short version:
+
 ```sh
 pnpm install --frozen-lockfile
 pnpm check
@@ -51,7 +53,9 @@ pnpm pack:check
 npm publish --access public
 ```
 
-After publishing a new version, update the deployment template only when its wrapper files need to change. Normal users receive runtime updates by merging Dependabot or Renovate PRs that bump `@phyzess/latch`.
+After publishing a new version, update deployment instances by bumping their
+`@phyzess/latch` dependency. Update the deployment template only when its
+wrapper files need to change.
 
 ## Security
 

@@ -59,4 +59,6 @@ jobs:
         run: pnpm pack:check
 
       - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --provenance --access public --registry=https://registry.npmjs.org

@@ -72,7 +72,11 @@ Actions instead. Configure npm Trusted Publishing for `@phyzess/latch` with:
 
 Then run the `Publish Runtime` workflow on the release commit. The workflow uses
 GitHub-hosted runners, npm OIDC, and `https://registry.npmjs.org`, so it does
-not depend on local npm registry settings or long-lived npm tokens.
+not depend on local npm registry settings.
+
+If Trusted Publishing is not configured yet, add an `NPM_TOKEN` repository
+secret with publish access. The same workflow passes that token to `npm publish`
+without printing it in logs.
 
 ## Update Deployment Instances
 

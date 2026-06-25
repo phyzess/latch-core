@@ -76,7 +76,8 @@ not depend on local npm registry settings.
 
 If Trusted Publishing is not configured yet, add an `NPM_TOKEN` repository
 secret with publish access. The same workflow passes that token to `npm publish`
-without printing it in logs.
+without printing it in logs. Token-based publishing does not attach npm
+provenance; re-enable Trusted Publishing when the package settings are ready.
 
 ## Update Deployment Instances
 

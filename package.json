@@ -13,7 +13,7 @@
     "LICENSE"
   ],
   "bin": {
-    "latch": "./package/cli.js"
+    "latch": "package/cli.js"
   },
   "exports": {
     "./worker": {

@@ -1,0 +1,59 @@
+name: Publish Runtime
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish @phyzess/latch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "26"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Set up pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.1.1 --activate
+
+      - name: Use current npm
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check package version
+        run: |
+          current="$(node -p "require('./package.json').version")"
+          published="$(npm view @phyzess/latch version --registry=https://registry.npmjs.org)"
+
+          if [ "$current" = "$published" ]; then
+            echo "@phyzess/latch ${current} is already published."
+            exit 1
+          fi
+
+          echo "Publishing @phyzess/latch ${current}; npm currently has ${published}."
+
+      - name: Run checks
+        run: pnpm check
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Verify package
+        run: pnpm pack:check
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public --registry=https://registry.npmjs.org

@@ -62,6 +62,18 @@ npm publish --access public
 npm view @phyzess/latch version
 ```
 
+If the local network routes npm through a company registry, publish from GitHub
+Actions instead. Configure npm Trusted Publishing for `@phyzess/latch` with:
+
+- Organization or user: `phyzess`
+- Repository: `latch-core`
+- Workflow filename: `publish-runtime.yml`
+- Allowed action: `npm publish`
+
+Then run the `Publish Runtime` workflow on the release commit. The workflow uses
+GitHub-hosted runners, npm OIDC, and `https://registry.npmjs.org`, so it does
+not depend on local npm registry settings or long-lived npm tokens.
+
 ## Update Deployment Instances
 
 After the new runtime is published, update deployment instances rather than

@@ -74,10 +74,10 @@ Then run the `Publish Runtime` workflow on the release commit. The workflow uses
 GitHub-hosted runners, npm OIDC, and `https://registry.npmjs.org`, so it does
 not depend on local npm registry settings.
 
-If Trusted Publishing is not configured yet, add an `NPM_TOKEN` repository
-secret with publish access. The same workflow passes that token to `npm publish`
-without printing it in logs. Token-based publishing does not attach npm
-provenance; re-enable Trusted Publishing when the package settings are ready.
+If Trusted Publishing is not configured yet, configure it before running the
+workflow. Token-based publishing is intentionally not part of the default CI
+path because package-scoped token permissions are easy to misconfigure and do
+not attach npm provenance.
 
 ## Update Deployment Instances
 

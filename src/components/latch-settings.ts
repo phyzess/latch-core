@@ -1,7 +1,9 @@
 import "./latch-icon";
 import { DEFAULT_SERVICE_CONFIG_YAML } from "../lib/default-service-config";
+import { handDrawnTheme } from "../lib/hand-drawn-theme";
 import { bindServiceIconFallbacks } from "../lib/icon-fallbacks";
 import { applyShadowStyles } from "../lib/shadow-styles";
+import { getServiceDisplayName, getServiceHostname } from "../lib/service-list";
 import {
   ConfigValidationError,
   parseServiceConfigSource,
@@ -34,59 +36,20 @@ type ConfigResponse = {
 };
 
 const settingsStyles = `
-  :host {
-    --latch-page: #f6f7f8;
-    --latch-surface: #ffffff;
-    --latch-tint: #f8fafc;
-    --latch-fill: #eef0f2;
-    --latch-line: #e1e4e8;
-    --latch-ink: #1d1d1f;
-    --latch-strong: #34363a;
-    --latch-muted: #6f7379;
-    --latch-subtle: #9aa0a8;
-    --latch-brand: #1677ff;
-    --latch-danger: #b42318;
-    --latch-success: #147a4b;
-    background: var(--latch-page);
-    color: var(--latch-ink);
-    display: block;
-    min-block-size: 100dvh;
-    font-family:
-      "SF Pro Text",
-      ui-sans-serif,
-      system-ui,
-      -apple-system,
-      BlinkMacSystemFont,
-      "Segoe UI",
-      sans-serif;
-    letter-spacing: 0;
-  }
-
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
-  }
-
-  button,
-  textarea,
-  select {
-    color: inherit;
-    font: inherit;
-    letter-spacing: inherit;
-  }
+  ${handDrawnTheme}
 
   .settings-shell {
     display: grid;
-    gap: 18px;
-    inline-size: min(920px, calc(100vw - 48px));
+    gap: 20px;
+    inline-size: min(1040px, calc(100vw - 48px));
     margin-inline: auto;
-    padding-block: clamp(34px, 6vw, 68px);
+    padding-block: clamp(30px, 5vw, 58px) clamp(46px, 7vw, 76px);
   }
 
   .top-row,
   .header-actions,
-  .action-row {
+  .action-row,
+  .revision-actions {
     align-items: center;
     display: flex;
     gap: 10px;
@@ -96,84 +59,167 @@ const settingsStyles = `
     justify-content: space-between;
   }
 
-  .brand-link {
+  .brand-link,
+  .button {
     align-items: center;
-    color: var(--latch-ink);
+    background: var(--latch-surface);
+    border: 3px solid var(--latch-pencil);
+    border-radius: var(--latch-radius-sm);
+    box-shadow: var(--latch-shadow);
+    color: var(--latch-pencil);
+    cursor: pointer;
     display: inline-flex;
-    font-size: 0.9rem;
-    font-weight: 680;
-    gap: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    gap: 7px;
+    justify-content: center;
+    min-block-size: 40px;
+    padding-inline: 13px;
     text-decoration: none;
+    transition:
+      background-color 120ms ease,
+      box-shadow 120ms ease,
+      color 120ms ease,
+      opacity 120ms ease,
+      transform 120ms ease;
   }
 
-  .brand-link latch-icon {
+  .brand-link {
+    transform: rotate(-1deg);
+  }
+
+  .button.primary {
+    background: var(--latch-marker);
+    color: #ffffff;
+  }
+
+  .brand-link:hover,
+  .brand-link:focus-visible,
+  .button:not(:disabled):hover,
+  .button:not(:disabled):focus-visible {
+    background: var(--latch-pen);
+    color: #ffffff;
+    outline: 0;
+    transform: translate(2px, 2px) rotate(0deg);
+    box-shadow: var(--latch-shadow-pressed);
+  }
+
+  .button.primary:not(:disabled):hover,
+  .button.primary:not(:disabled):focus-visible {
+    background: var(--latch-marker-dark);
+  }
+
+  .brand-link:focus-visible,
+  .button:focus-visible,
+  .revision-select:focus-visible,
+  .config-editor:focus-visible {
+    outline: 0;
+    box-shadow:
+      var(--latch-shadow-pressed),
+      0 0 0 5px var(--latch-focus);
+  }
+
+  .brand-link:active,
+  .button:not(:disabled):active {
+    box-shadow: none;
+    transform: translate(5px, 5px) rotate(0deg);
+  }
+
+  .button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .brand-link latch-icon,
+  .button latch-icon {
     --icon-size: 0.92rem;
   }
 
   .header {
     display: grid;
-    gap: 6px;
+    gap: 8px;
   }
 
   .title {
-    font-size: clamp(1.72rem, 4vw, 2.1rem);
-    font-weight: 740;
-    line-height: 1.04;
+    color: var(--latch-pencil);
+    font-family:
+      "Kalam",
+      "Patrick Hand",
+      "Segoe Print",
+      cursive;
+    font-size: clamp(2.55rem, 5vw, 3.55rem);
+    font-weight: 700;
+    line-height: 0.92;
     margin: 0;
+    text-wrap: balance;
   }
 
   .subtitle,
-  .meta-text {
-    color: var(--latch-muted);
-    font-size: 0.9rem;
-    line-height: 1.35;
+  .meta-text,
+  .editor-status {
+    color: var(--latch-pencil-muted);
+    font-size: 1rem;
+    line-height: 1.28;
     margin: 0;
   }
 
   .workspace {
+    align-items: start;
     display: grid;
-    gap: 16px;
-    grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+    gap: 18px;
+    grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
   }
 
   .panel,
   .state-panel {
     background: var(--latch-surface);
-    border: 1px solid var(--latch-line);
-    border-radius: 14px;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    border: 3px solid var(--latch-pencil);
+    border-radius: var(--latch-radius-lg);
+    box-shadow: var(--latch-shadow);
   }
 
   .editor-panel {
     display: grid;
+    gap: 13px;
+    padding: 15px;
+    transform: rotate(-0.25deg);
+  }
+
+  .editor-label-row {
+    align-items: baseline;
+    display: flex;
     gap: 12px;
-    padding: 14px;
+    justify-content: space-between;
+  }
+
+  .editor-label {
+    color: var(--latch-pencil-soft);
+    font-size: 1.08rem;
+    font-weight: 700;
   }
 
   .config-editor {
-    background: #101418;
-    border: 1px solid #242b33;
-    border-radius: 10px;
-    color: #f7fafc;
+    background:
+      linear-gradient(rgba(45, 93, 161, 0.08) 1px, transparent 1px),
+      #fffefb;
+    background-size: 100% 32px;
+    border: 3px solid var(--latch-pencil);
+    border-radius: var(--latch-radius-md);
+    box-shadow: inset 3px 3px 0 0 rgba(45, 45, 45, 0.06);
+    color: var(--latch-pencil);
     font-family:
       "SF Mono",
       "Roboto Mono",
       ui-monospace,
       monospace;
-    font-size: 0.86rem;
-    line-height: 1.55;
-    min-block-size: 520px;
-    padding: 14px;
+    font-size: 0.88rem;
+    line-height: 1.58;
+    min-block-size: 536px;
+    padding: 15px;
     resize: vertical;
     tab-size: 2;
     white-space: pre;
     width: 100%;
-  }
-
-  .config-editor:focus {
-    border-color: rgba(22, 119, 255, 0.74);
-    box-shadow: 0 0 0 4px rgba(22, 119, 255, 0.18);
-    outline: 0;
   }
 
   .side-column {
@@ -184,51 +230,69 @@ const settingsStyles = `
   .panel-section {
     display: grid;
     gap: 12px;
-    padding: 14px;
+    padding: 15px;
+  }
+
+  .panel-section:nth-child(2n) {
+    transform: rotate(0.35deg);
   }
 
   .panel-title {
-    color: var(--latch-strong);
-    font-size: 0.83rem;
-    font-weight: 720;
-    letter-spacing: 0;
+    align-self: start;
+    background: var(--latch-note);
+    border: 2px solid var(--latch-pencil);
+    border-radius: var(--latch-radius-sm);
+    box-shadow: var(--latch-shadow-soft);
+    color: var(--latch-pencil-soft);
+    font-size: 0.98rem;
+    font-weight: 700;
+    justify-self: start;
+    line-height: 1.1;
     margin: 0;
-    text-transform: uppercase;
+    padding: 5px 10px;
+    transform: rotate(-1deg);
   }
 
   .preview-list,
   .revision-list,
   .message-list {
     display: grid;
-    gap: 8px;
+    gap: 9px;
     margin: 0;
     padding: 0;
   }
 
   .preview-item {
     align-items: center;
-    border: 1px solid var(--latch-line);
-    border-radius: 10px;
+    background: rgba(253, 251, 247, 0.74);
+    border: 2px dashed rgba(45, 45, 45, 0.58);
+    border-radius: var(--latch-radius-md);
     display: grid;
-    gap: 10px;
-    grid-template-columns: 34px minmax(0, 1fr);
-    min-block-size: 54px;
-    padding: 9px 10px;
+    gap: 11px;
+    grid-template-columns: 38px minmax(0, 1fr);
+    min-block-size: 60px;
+    padding: 10px 11px;
+  }
+
+  .preview-item:nth-child(2n) {
+    transform: rotate(-0.3deg);
   }
 
   .icon-box {
     align-items: center;
-    background: var(--latch-fill);
-    border-radius: 9px;
-    color: var(--latch-strong);
+    background: var(--latch-muted-surface);
+    border: 2px solid var(--latch-pencil);
+    border-radius: var(--latch-radius-sm);
+    color: var(--latch-pencil-soft);
     display: grid;
-    block-size: 34px;
-    inline-size: 34px;
+    block-size: 38px;
+    box-shadow: 2px 2px 0 0 rgba(45, 45, 45, 0.18);
+    inline-size: 38px;
     place-items: center;
   }
 
   .icon-box latch-icon {
-    --icon-size: 0.92rem;
+    --icon-size: 0.98rem;
   }
 
   .icon-box latch-icon[hidden] {
@@ -236,10 +300,10 @@ const settingsStyles = `
   }
 
   .service-icon-image {
-    block-size: 22px;
-    border-radius: 5px;
+    block-size: 23px;
+    border-radius: 6px;
     display: block;
-    inline-size: 22px;
+    inline-size: 23px;
     object-fit: contain;
   }
 
@@ -254,138 +318,107 @@ const settingsStyles = `
   }
 
   .item-name {
-    color: var(--latch-ink);
-    font-size: 0.9rem;
-    font-weight: 660;
+    color: var(--latch-pencil);
+    font-size: 1.02rem;
+    font-weight: 700;
+    line-height: 1.08;
     overflow-wrap: anywhere;
   }
 
   .item-meta {
-    color: var(--latch-muted);
-    font-size: 0.8rem;
+    color: var(--latch-pencil-muted);
+    font-size: 0.92rem;
+    line-height: 1.12;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .message {
-    border-radius: 10px;
-    font-size: 0.84rem;
-    line-height: 1.38;
-    padding: 10px 11px;
+    border: 2px solid var(--latch-pencil);
+    border-radius: var(--latch-radius-md);
+    box-shadow: var(--latch-shadow-soft);
+    font-size: 0.98rem;
+    line-height: 1.32;
+    padding: 11px 12px;
   }
 
   .message.error {
-    background: #fff5f5;
-    border: 1px solid #ffd6d2;
+    background: #ffe3e3;
     color: var(--latch-danger);
   }
 
   .message.success {
-    background: #effbf4;
-    border: 1px solid #cdeeda;
+    background: #e4f6e9;
     color: var(--latch-success);
   }
 
   .message.neutral {
-    background: var(--latch-tint);
-    border: 1px solid var(--latch-line);
-    color: var(--latch-muted);
+    background: var(--latch-muted-surface);
+    color: var(--latch-pencil-muted);
   }
 
   .message-list {
-    padding-inline-start: 18px;
-  }
-
-  .button {
-    align-items: center;
-    background: #ffffff;
-    border: 1px solid var(--latch-line);
-    border-radius: 9px;
-    cursor: pointer;
-    display: inline-flex;
-    font-size: 0.84rem;
-    font-weight: 670;
-    gap: 7px;
-    justify-content: center;
-    min-block-size: 34px;
-    padding-inline: 12px;
-    text-decoration: none;
-    transition:
-      background-color 160ms ease,
-      box-shadow 160ms ease,
-      transform 160ms ease;
-  }
-
-  .button.primary {
-    background: var(--latch-brand);
-    border-color: var(--latch-brand);
-    color: #ffffff;
-  }
-
-  .button:hover,
-  .button:focus-visible,
-  .revision-select:focus-visible {
-    box-shadow: 0 0 0 4px rgba(22, 119, 255, 0.16);
-    outline: 0;
-  }
-
-  .button:not(:disabled):active {
-    transform: translateY(1px);
-  }
-
-  .button:disabled {
-    cursor: not-allowed;
-    opacity: 0.48;
-  }
-
-  .button latch-icon {
-    --icon-size: 0.9rem;
+    padding-inline-start: 20px;
   }
 
   .revision-select {
-    background: #ffffff;
-    border: 1px solid var(--latch-line);
-    border-radius: 9px;
-    min-block-size: 34px;
+    background: var(--latch-surface);
+    border: 3px solid var(--latch-pencil);
+    border-radius: var(--latch-radius-sm);
+    box-shadow: var(--latch-shadow-soft);
+    min-block-size: 40px;
     min-inline-size: 0;
     padding-inline: 10px;
     width: 100%;
   }
 
+  .revision-detail {
+    color: var(--latch-pencil-muted);
+    font-size: 0.94rem;
+    line-height: 1.25;
+    margin: 0;
+  }
+
   .state-panel {
     align-items: center;
     display: grid;
-    gap: 14px;
-    grid-template-columns: 40px minmax(0, 1fr);
-    min-block-size: 80px;
-    padding: 16px;
+    gap: 15px;
+    grid-template-columns: 42px minmax(0, 1fr);
+    min-block-size: 88px;
+    padding: 18px;
+    transform: rotate(-0.35deg);
   }
 
   .state-icon {
     align-items: center;
-    background: var(--latch-fill);
-    border-radius: 12px;
-    color: var(--latch-strong);
+    background: var(--latch-muted-surface);
+    border: 2px solid var(--latch-pencil);
+    border-radius: var(--latch-radius-sm);
+    color: var(--latch-pencil-soft);
     display: grid;
-    block-size: 40px;
-    inline-size: 40px;
+    block-size: 42px;
+    inline-size: 42px;
     place-items: center;
   }
 
   .state-icon latch-icon {
-    --icon-size: 1rem;
+    --icon-size: 1.08rem;
   }
 
-  @media (max-width: 820px) {
+  @media (max-width: 860px) {
     .settings-shell {
       inline-size: calc(100vw - 24px);
-      padding-block: 24px;
+      padding-block: 24px 48px;
     }
 
     .top-row {
       align-items: start;
       flex-direction: column;
+    }
+
+    .header-actions {
+      flex-wrap: wrap;
     }
 
     .workspace {
@@ -396,6 +429,23 @@ const settingsStyles = `
       min-block-size: 420px;
     }
   }
+
+  @media (max-width: 520px) {
+    .settings-shell {
+      inline-size: calc(100vw - 20px);
+    }
+
+    .action-row,
+    .editor-label-row,
+    .revision-actions {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .button {
+      width: 100%;
+    }
+  }
 `;
 
 export class LatchSettings extends HTMLElement {
@@ -404,6 +454,7 @@ export class LatchSettings extends HTMLElement {
   #session: SessionResponse | undefined;
   #configured = false;
   #raw = DEFAULT_SERVICE_CONFIG_YAML;
+  #savedRaw = "";
   #draftServices: PreviewServiceEntry[] = [];
   #revisions: RevisionSummary[] = [];
   #validationMessage = "";
@@ -412,6 +463,7 @@ export class LatchSettings extends HTMLElement {
   #errorMessage = "";
   #isSaving = false;
   #selectedRevisionId = "";
+  #lastSavedAt = "";
 
   constructor() {
     super();
@@ -441,7 +493,7 @@ export class LatchSettings extends HTMLElement {
       this.#status = "ready";
     } catch (error) {
       this.#status = "error";
-      this.#errorMessage = error instanceof Error ? error.message : "Could not load settings.";
+      this.#errorMessage = getFriendlyErrorMessage(error, "Could not load settings.");
     }
 
     this.#validateDraft(updateDraftServices);
@@ -453,6 +505,10 @@ export class LatchSettings extends HTMLElement {
     this.#notice = "";
     if (this.#validationMessage) {
       this.#syncDraftPanels();
+      return;
+    }
+
+    if (!this.#isDirty() && this.#configured) {
       return;
     }
 
@@ -468,10 +524,10 @@ export class LatchSettings extends HTMLElement {
         method: "PUT"
       });
       this.#applyConfig(config);
-      this.#notice = "Saved";
+      this.#notice = `Saved at ${formatTime(this.#lastSavedAt)}`;
     } catch (error) {
       this.#notice = "";
-      this.#validationMessage = error instanceof Error ? error.message : "Could not save config.";
+      this.#validationMessage = getFriendlyErrorMessage(error, "Could not save config.");
     }
 
     this.#isSaving = false;
@@ -480,6 +536,15 @@ export class LatchSettings extends HTMLElement {
 
   async #rollback(): Promise<void> {
     if (!this.#selectedRevisionId) {
+      return;
+    }
+
+    const revision = this.#getSelectedRevision();
+    const label = revision ? formatRevision(revision) : "the selected revision";
+    if (
+      this.#isDirty() &&
+      !globalThis.confirm(`Restore ${label}? Unsaved changes will be replaced.`)
+    ) {
       return;
     }
 
@@ -496,10 +561,9 @@ export class LatchSettings extends HTMLElement {
         method: "POST"
       });
       this.#applyConfig(config);
-      this.#notice = "Restored";
+      this.#notice = `Restored ${formatTime(this.#lastSavedAt)}`;
     } catch (error) {
-      this.#validationMessage =
-        error instanceof Error ? error.message : "Could not restore revision.";
+      this.#validationMessage = getFriendlyErrorMessage(error, "Could not restore revision.");
     }
 
     this.#isSaving = false;
@@ -509,9 +573,13 @@ export class LatchSettings extends HTMLElement {
   #applyConfig(config: ConfigResponse): void {
     this.#configured = config.configured;
     this.#raw = config.raw;
+    this.#savedRaw = config.configured ? config.raw : "";
     this.#draftServices = config.services;
     this.#revisions = config.revisions;
     this.#selectedRevisionId = this.#revisions[0]?.id ?? "";
+    this.#lastSavedAt = config.configured
+      ? (this.#revisions[0]?.savedAt ?? new Date().toISOString())
+      : "";
     this.#validationMessage = "";
     this.#validationDetails = [];
   }
@@ -595,17 +663,21 @@ export class LatchSettings extends HTMLElement {
     return `
       <section class="workspace">
         <div class="panel editor-panel">
-          <textarea class="config-editor" spellcheck="false" data-field="raw">${escapeHtml(
+          <div class="editor-label-row">
+            <label class="editor-label" for="latch-config-editor">Service YAML</label>
+            <span class="editor-status" data-role="editor-status">${escapeHtml(this.#getEditorStatus())}</span>
+          </div>
+          <textarea id="latch-config-editor" class="config-editor" spellcheck="false" data-field="raw">${escapeHtml(
             this.#raw
           )}</textarea>
           <div class="action-row">
             <button class="button primary" type="button" data-action="save" ${
-              this.#isSaving || this.#validationMessage ? "disabled" : ""
+              this.#isSaveDisabled() ? "disabled" : ""
             }>
               <latch-icon name="save" aria-hidden="true"></latch-icon>
-              <span>${this.#isSaving ? "Saving" : "Save"}</span>
+              <span data-role="save-label">${escapeHtml(this.#getSaveLabel())}</span>
             </button>
-            <span class="meta-text">${this.#configured ? "Configured" : "Not configured"}</span>
+            <span class="meta-text" data-role="config-status">${escapeHtml(this.#getConfigStatus())}</span>
           </div>
         </div>
         <aside class="side-column">
@@ -675,7 +747,7 @@ export class LatchSettings extends HTMLElement {
   }
 
   #renderService(service: PreviewServiceEntry): string {
-    const host = new URL(service.url).hostname;
+    const host = getServiceHostname(service);
     const name = getServiceDisplayName(service);
     return `
       <div class="preview-item">
@@ -695,24 +767,34 @@ export class LatchSettings extends HTMLElement {
       return `<div class="message neutral">No revisions</div>`;
     }
 
+    const selectedRevision = this.#getSelectedRevision();
+    const selectedDetail = selectedRevision
+      ? `${selectedRevision.serviceCount} services saved by ${selectedRevision.savedBy}`
+      : "";
+
     return `
-      <select class="revision-select" data-field="revision">
-        ${this.#revisions
-          .map(
-            (revision) => `
-              <option value="${escapeAttribute(revision.id)}" ${
-                revision.id === this.#selectedRevisionId ? "selected" : ""
-              }>
-                ${escapeHtml(formatRevision(revision))}
-              </option>
-            `
-          )
-          .join("")}
-      </select>
-      <button class="button" type="button" data-action="rollback" ${this.#isSaving ? "disabled" : ""}>
-        <latch-icon name="refresh" aria-hidden="true"></latch-icon>
-        <span>Restore</span>
-      </button>
+      <div class="revision-list">
+        <select class="revision-select" data-field="revision" aria-label="Revision">
+          ${this.#revisions
+            .map(
+              (revision) => `
+                <option value="${escapeAttribute(revision.id)}" ${
+                  revision.id === this.#selectedRevisionId ? "selected" : ""
+                }>
+                  ${escapeHtml(formatRevision(revision))}
+                </option>
+              `
+            )
+            .join("")}
+        </select>
+        ${selectedDetail ? `<p class="revision-detail">${escapeHtml(selectedDetail)}</p>` : ""}
+        <div class="revision-actions">
+          <button class="button" type="button" data-action="rollback" ${this.#isSaving ? "disabled" : ""}>
+            <latch-icon name="refresh" aria-hidden="true"></latch-icon>
+            <span>Restore</span>
+          </button>
+        </div>
+      </div>
     `;
   }
 
@@ -742,6 +824,7 @@ export class LatchSettings extends HTMLElement {
       this.#root.querySelector("[data-field='revision']") as HTMLSelectElement | null
     )?.addEventListener("change", (event: Event) => {
       this.#selectedRevisionId = (event.currentTarget as HTMLSelectElement).value;
+      this.#render();
     });
 
     this.#root
@@ -771,8 +854,67 @@ export class LatchSettings extends HTMLElement {
 
     const save = this.#root.querySelector<HTMLButtonElement>("[data-action='save']");
     if (save) {
-      save.disabled = this.#isSaving || Boolean(this.#validationMessage);
+      save.disabled = this.#isSaveDisabled();
+      save.querySelector("[data-role='save-label']")?.replaceChildren(this.#getSaveLabel());
     }
+
+    this.#root
+      .querySelector("[data-role='editor-status']")
+      ?.replaceChildren(this.#getEditorStatus());
+
+    this.#root
+      .querySelector("[data-role='config-status']")
+      ?.replaceChildren(this.#getConfigStatus());
+  }
+
+  #getSelectedRevision(): RevisionSummary | undefined {
+    return this.#revisions.find((revision) => revision.id === this.#selectedRevisionId);
+  }
+
+  #isDirty(): boolean {
+    return this.#raw !== this.#savedRaw;
+  }
+
+  #isSaveDisabled(): boolean {
+    return (
+      this.#isSaving || Boolean(this.#validationMessage) || (!this.#isDirty() && this.#configured)
+    );
+  }
+
+  #getSaveLabel(): string {
+    if (this.#isSaving) {
+      return "Saving";
+    }
+
+    return this.#configured && !this.#isDirty() ? "Saved" : "Save";
+  }
+
+  #getEditorStatus(): string {
+    if (this.#isSaving) {
+      return "Saving changes";
+    }
+
+    if (this.#validationMessage) {
+      return "Needs a fix";
+    }
+
+    if (this.#isDirty()) {
+      return "Unsaved changes";
+    }
+
+    if (this.#lastSavedAt) {
+      return `Saved ${formatTime(this.#lastSavedAt)}`;
+    }
+
+    return "Ready to save";
+  }
+
+  #getConfigStatus(): string {
+    if (!this.#configured) {
+      return "Not configured";
+    }
+
+    return this.#isDirty() ? "Draft differs from saved config" : "Configured";
   }
 }
 
@@ -806,15 +948,45 @@ function getErrorMessage(payload: unknown, status: number): string {
     return details ? `${error.message} ${details}` : error.message;
   }
 
-  return typeof payload === "string" && payload ? payload : `Request failed (${status}).`;
+  if (typeof payload === "string" && payload.trim() && !looksLikeHtml(payload)) {
+    return payload.length > 180 ? `${payload.slice(0, 180)}...` : payload;
+  }
+
+  return `Request failed (${status}).`;
+}
+
+function getFriendlyErrorMessage(error: unknown, fallback: string): string {
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  if (error.message === "Request failed (404).") {
+    return "Settings API unavailable. Open the Worker-backed app to edit services.";
+  }
+
+  return error.message || fallback;
+}
+
+function looksLikeHtml(value: string): boolean {
+  const trimmed = value.trim().toLowerCase();
+  return (
+    trimmed.startsWith("<!doctype") || trimmed.startsWith("<html") || trimmed.includes("<body")
+  );
 }
 
 function formatRevision(revision: RevisionSummary): string {
-  return `${new Date(revision.savedAt).toLocaleString()} · ${revision.serviceCount} services`;
+  return `${formatTime(revision.savedAt)} · ${revision.serviceCount} services`;
 }
 
-function getServiceDisplayName(service: PreviewServiceEntry): string {
-  return service.name ?? new URL(service.url).hostname;
+function formatTime(value: string): string {
+  if (!value) {
+    return "";
+  }
+
+  return new Date(value).toLocaleString([], {
+    dateStyle: "medium",
+    timeStyle: "short"
+  });
 }
 
 function renderServiceIcon(service: PreviewServiceEntry): string {
